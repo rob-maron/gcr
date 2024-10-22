@@ -5,6 +5,7 @@
 //!
 //! ```rust
 //! use gcr::Gcr;
+//! use std::time::Duration;
 //!
 //! let mut rate = Gcr::new(10, Duration::from_secs(1), Some(30)).unwrap();
 //!     // 10 units allowed every second with a max burst of 30 units at once
@@ -20,17 +21,18 @@
 //! It accepts the same parameters as [`Gcr::new`].
 //!
 //! ```rust
+//! use gcr::Gcr;
+//! use std::time::Duration;
+//!
+//! let mut rate = Gcr::new(10, Duration::from_secs(1), Some(30)).unwrap();
+//! 
 //! rate.adjust(20, Duration::from_secs(1), Some(30)).unwrap();
-//!     // 20 units allowed every second with a max burst of 30 units at once
+//!     // Double the allowed rate while preserving the current capacity
 //! ```
 //!
 //! ## Capacity
 //!
 //! [`Gcr::capacity`] can be used to get the current capacity of the rate limiter without making a request.
-//!
-//! ```rust
-//! rate.capacity();
-//! ```
 
 use core::fmt;
 use std::{
@@ -143,6 +145,7 @@ impl Gcr {
     }
 
     /// Get the capacity of the rate limiter at a given time.
+    /// 
     /// Note: this function calculates the capacity on the fly
     fn capacity_at(&self, now: Instant) -> u32 {
         // Get the duration since the allow at time
@@ -159,6 +162,7 @@ impl Gcr {
     }
 
     /// Get the current capacity of the rate limiter
+    /// 
     /// Note: this function calculates the capacity on the fly
     pub fn capacity(&self) -> u32 {
         self.capacity_at(Instant::now())

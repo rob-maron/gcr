@@ -1,0 +1,16 @@
+name: Publish
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  lint-and-test:
+    name: cargo lint and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo lint
+      - run: cargo test
