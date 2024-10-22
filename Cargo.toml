@@ -4,6 +4,7 @@ description = "A fast, simple, and small Generic Cell Rate (GCR) algorithm imple
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
+readme = "README.md"
 keywords = ["rate-limiter", "rate", "limiter", "gcr", "gcra"]
 
 [dependencies]
