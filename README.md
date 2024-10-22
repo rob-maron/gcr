@@ -1,4 +1,6 @@
 # Generic Cell Rate (GCR) algorithm
+[![crates.io](https://img.shields.io/crates/v/gcr)](https://crates.io/crates/gcr)
+[![docs.rs](https://img.shields.io/docsrs/gcr)](https://docs.rs/gcr)
 
 A fast, simple, and small Generic Cell Rate (`GCR`) algorithm implementation with zero dependencies
 that allows for dynamic rate adjustment.
