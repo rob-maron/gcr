@@ -1,11 +1,12 @@
 [package]
 name = "gcr"
-description = "A fast, simple, and small Generic Cell Rate (GCR) algorithm implementation with zero dependencies."
+description = "A fast, simple, and small Generic Cell Rate (GCR) algorithm implementation with zero dependencies"
 version = "0.1.1"
 edition = "2021"
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/rob-maron/gcr"
 keywords = ["rate-limiter", "rate", "limiter", "gcr", "gcra"]
+rust-version = "1.80" # Required for `div_duration_u64`
 
 [dependencies]
