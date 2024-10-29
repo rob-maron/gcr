@@ -25,7 +25,7 @@
 //! use std::time::Duration;
 //!
 //! let mut rate = Gcr::new(10, Duration::from_secs(1), Some(30)).unwrap();
-//! 
+//!
 //! rate.adjust(20, Duration::from_secs(1), Some(30)).unwrap();
 //!     // Double the allowed rate while preserving the current capacity
 //! ```
@@ -98,7 +98,7 @@ impl Gcr {
     /// * `rate` - The number of units to "refill" per `period`
     /// * `period` - The amount of time between each "refill"
     /// * `max_burst` - The maximum number of units to allow in a single request. If
-    /// not specified, this will be set to the rate.
+    ///     not specified, this will be set to the rate.
     ///
     /// Returns a new [`Gcr`] instance on success.
     ///
@@ -114,7 +114,7 @@ impl Gcr {
             period
                 .checked_div(rate)
                 .ok_or(GcrCreationError::ParametersOutOfRange(
-                    "duration division failed: supplied rate was zero".to_string(),
+                    "Supplied rate was zero".to_string(),
                 ))?;
 
         // If not set, the max burst is the rate
@@ -122,7 +122,9 @@ impl Gcr {
 
         // The delay tolerance is the time between the theoretical arrival time and the
         // allow at time
-        let delay_tolerance = emission_interval * max_burst;
+        let delay_tolerance = emission_interval.checked_mul(max_burst).ok_or(
+            GcrCreationError::ParametersOutOfRange("Period / rate was too large".to_string()),
+        )?;
 
         // This is set to the current time so we can instantly have our full burst
         let theoretical_arrival_time = Instant::now();
@@ -131,8 +133,7 @@ impl Gcr {
         let allow_at = theoretical_arrival_time
             .checked_sub(delay_tolerance)
             .ok_or(GcrCreationError::ParametersOutOfRange(
-                "interval subtraction failed: max_burst * (period / rate) was too large"
-                    .to_string(),
+                "Period / rate was too large".to_string(),
             ))?;
 
         Ok(Self {
@@ -145,7 +146,7 @@ impl Gcr {
     }
 
     /// Get the capacity of the rate limiter at a given time.
-    /// 
+    ///
     /// Note: this function calculates the capacity on the fly
     fn capacity_at(&self, now: Instant) -> u32 {
         // Get the duration since the allow at time
@@ -162,7 +163,7 @@ impl Gcr {
     }
 
     /// Get the current capacity of the rate limiter
-    /// 
+    ///
     /// Note: this function calculates the capacity on the fly
     pub fn capacity(&self) -> u32 {
         self.capacity_at(Instant::now())
@@ -185,12 +186,22 @@ impl Gcr {
         // This is the canonical request time
         let now = Instant::now();
 
+        // Calculate how long it would take to allow the request
+        let required_duration =
+            self.emission_interval
+                .checked_mul(n)
+                .ok_or(GcrRequestError::ParametersOutOfRange(
+                    "Period / rate was too large".to_string(),
+                ))?;
+
         // If the request exceeds capacity, deny it
         if n > self.capacity_at(now) {
             // If we are not past the virtual theoretical arrival time, disallow the request
 
             // Calculate the time at which all units would have been allowed
-            let allow_time = self.allow_at + (n * self.emission_interval);
+            let allow_time = self.allow_at.checked_add(required_duration).ok_or(
+                GcrRequestError::ParametersOutOfRange("Period / rate was too large".to_string()),
+            )?;
 
             // See how far it is from the current time
             let denied_for = allow_time.checked_duration_since(now);
@@ -202,15 +213,18 @@ impl Gcr {
         // We are past the virtual theoretical arrival time, so allow the request
 
         // Update the theoretical arrival time to account for the new units consumed
-        self.theoretical_arrival_time =
-            max(self.theoretical_arrival_time, now) + (n * self.emission_interval);
+        self.theoretical_arrival_time = max(self.theoretical_arrival_time, now)
+            .checked_add(required_duration)
+            .ok_or(GcrRequestError::ParametersOutOfRange(
+                "Period / rate was too large".to_string(),
+            ))?;
 
         // Update the `allow_at` time to account for the new units consumed
         self.allow_at = self
             .theoretical_arrival_time
             .checked_sub(self.delay_tolerance)
             .ok_or(GcrRequestError::ParametersOutOfRange(
-                "interval subtraction failed: delay_tolerance was too large".to_string(),
+                "(Period / rate * max_burst) was too large".to_string(),
             ))?;
 
         Ok(())
@@ -237,15 +251,24 @@ impl Gcr {
             // Update the allow at time to account for the new rate
             new_rate.allow_at = now
                 .checked_sub(
-                    time_since.div_duration_f64(self.emission_interval) as u32
-                        * new_rate.emission_interval,
+                    new_rate
+                        .emission_interval
+                        .checked_mul(time_since.div_duration_f64(self.emission_interval) as u32)
+                        .ok_or(GcrCreationError::ParametersOutOfRange(
+                            "Period / rate was too large".to_string(),
+                        ))?,
                 )
                 .ok_or(GcrCreationError::ParametersOutOfRange(
                     "interval subtraction failed: emission_interval was too large".to_string(),
                 ))?;
 
             // Update the theoretical arrival time to account for the new rate
-            new_rate.theoretical_arrival_time = new_rate.allow_at + new_rate.delay_tolerance;
+            new_rate.theoretical_arrival_time = new_rate
+                .allow_at
+                .checked_add(new_rate.delay_tolerance)
+                .ok_or(GcrCreationError::ParametersOutOfRange(
+                    "Delay tolerance was too large".to_string(),
+                ))?;
         }
 
         // Replace ourselves with the new rate
