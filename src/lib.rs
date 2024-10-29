@@ -259,7 +259,7 @@ impl Gcr {
                         ))?,
                 )
                 .ok_or(GcrCreationError::ParametersOutOfRange(
-                    "interval subtraction failed: emission_interval was too large".to_string(),
+                    "Period / rate was too large".to_string(),
                 ))?;
 
             // Update the theoretical arrival time to account for the new rate
